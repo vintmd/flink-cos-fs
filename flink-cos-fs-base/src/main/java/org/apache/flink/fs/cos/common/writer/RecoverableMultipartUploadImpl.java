@@ -19,10 +19,13 @@
 package org.apache.flink.fs.cos.common.writer;
 
 import org.apache.flink.core.fs.RecoverableFsDataOutputStream;
+import org.apache.flink.fs.cos.common.fswriter.COSPosixRecoverableWriter;
 import org.apache.flink.fs.cos.common.utils.RefCountedFSOutputStream;
 
 import com.qcloud.cos.model.PartETag;
 import com.qcloud.cos.thirdparty.org.apache.commons.codec.digest.DigestUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
@@ -45,11 +48,15 @@ import static org.apache.flink.util.Preconditions.checkState;
 
 /** The Recoverable MPU implementation. */
 public class RecoverableMultipartUploadImpl implements RecoverableMultipartUpload {
+    private static final Logger LOG = LoggerFactory.getLogger(RecoverableMultipartUploadImpl.class);
+
     private final COSAccessHelper cosAccessHelper;
 
     private final Executor uploadThreadPool;
 
     private final Deque<CompletableFuture<PartETag>> uploadsInProgress;
+
+    private final Deque<Integer> recordPartNumberQue;
 
     private final String namePrefixForTempObjects;
 
@@ -70,6 +77,7 @@ public class RecoverableMultipartUploadImpl implements RecoverableMultipartUploa
                 new MultipartUploadInfo(objectName, uploadId, partsSoFar, numBytes, incompletePart);
         this.namePrefixForTempObjects = createIncompletePartObjectNamePrefix(objectName);
         this.uploadsInProgress = new ArrayDeque<>();
+        this.recordPartNumberQue = new ArrayDeque<>();
     }
 
     @Override
@@ -83,6 +91,7 @@ public class RecoverableMultipartUploadImpl implements RecoverableMultipartUploa
 
         final long partLength = file.getPos();
         currentUploadInfo.registerNewPart(partLength);
+        recordPartNumberQue.add(currentUploadInfo.getNumberOfRegisteredParts());
 
         file.retain(); // keep the file while the async upload still runs
         uploadThreadPool.execute(
@@ -170,13 +179,22 @@ public class RecoverableMultipartUploadImpl implements RecoverableMultipartUploa
 
     private void awaitPendingPartsUpload() throws IOException {
         checkState(this.currentUploadInfo.getRemainingParts() == this.uploadsInProgress.size());
+        String needWaitParts = this.recordPartNumberQue.toString();
+        LOG.info("begin to await pending parts upload, key: {}, wait parts: {}",
+                this.currentUploadInfo.getObjectName(), needWaitParts);
+
 
         while (this.currentUploadInfo.getRemainingParts() > 0) {
             CompletableFuture<PartETag> next = this.uploadsInProgress.peekFirst();
             PartETag nextPart = awaitPendingPartUploadToComplete(next);
             this.currentUploadInfo.registerCompletePart(nextPart);
             this.uploadsInProgress.removeFirst();
+            this.recordPartNumberQue.removeFirst();
         }
+        LOG.info("finish to await pending parts upload, key :{}, wait parts: {}," +
+                        " current parts: {}",
+                this.currentUploadInfo.getObjectName(), needWaitParts,
+                this.recordPartNumberQue.toString());
     }
 
     private PartETag awaitPendingPartUploadToComplete(CompletableFuture<PartETag> upload)
