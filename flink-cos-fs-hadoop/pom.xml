@@ -95,6 +95,7 @@
                                     <shadedPattern>${hadoop.shading.prefix}.com.google.common</shadedPattern>
                                 </relocation>
 
+                                <!-- todo no need on emr -->
                                 <relocation>
                                     <pattern>com.qcloud</pattern>
                                     <shadedPattern>${cos.shading.prefix}.shaded.com.qcloud</shadedPattern>
@@ -113,6 +114,17 @@
                                     <shadedPattern>${cos.shading.prefix}.common</shadedPattern>
                                 </relocation>
                             </relocations>
+<!--
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>org/apache/hadoop/**</exclude>
+                                        <exclude>com/qcloud/**</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+-->
                         </configuration>
                     </execution>
                 </executions>
