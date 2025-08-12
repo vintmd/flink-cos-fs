@@ -69,6 +69,7 @@
                                 load way, to direct load shade plugins so that can always shade it.
                                 if you need shade hadoop and use ranger at same time, it seems not work for now.
                                  -->
+<!--
                                 <relocation>
                                     <pattern>org.apache.hadoop</pattern>
                                     <shadedPattern>${hadoop.shading.prefix}.org.apache.hadoop</shadedPattern>
@@ -77,6 +78,7 @@
                                         <exclude>org/apache/flink/fs/coshadoop/Constants.class</exclude>
                                     </excludes>
                                 </relocation>
+-->
 
                                 <!-- used by ranger to load provider class, which must test for other provider-->
                                 <!--
@@ -86,6 +88,7 @@
                                 </relocation>
                                 -->
 
+<!--
                                 <relocation>
                                     <pattern>org.apache.commons</pattern>
                                     <shadedPattern>${hadoop.shading.prefix}.org.apache.commons</shadedPattern>
@@ -93,6 +96,13 @@
                                 <relocation>
                                     <pattern>com.google.common</pattern>
                                     <shadedPattern>${hadoop.shading.prefix}.com.google.common</shadedPattern>
+                                </relocation>
+-->
+
+
+                                <relocation>
+                                    <pattern>org.apache.hadoop</pattern>
+                                    <shadedPattern>${hadoop.shading.prefix}.org.apache.commons</shadedPattern>
                                 </relocation>
 
                                 <relocation>
